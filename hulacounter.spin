@@ -80,7 +80,6 @@ PUB Main | p_pixels, pos, ch, pix_count
                 strip.set(ch, strip.colorx(0,0,0,0,0)) 
                 time.pause(100)
             strip.clear
-            current_mode := 0 'reset to original mode
         MODE_COLOR_CHASE1 :  
             color_chase(@Chakras, 6, 100) 
         MODE_COLOR_CHASE2 :  
