@@ -65,6 +65,9 @@ PUB Main | p_pixels, pos, ch, pix_count
   'beginning of our state machine
   pix_count := 0
   repeat
+    if(hula_count == 0)
+        disp.Dec(current_mode)
+        
     case current_mode
         MODE_DEMO :
             color_wipe($20_00_00_00, 500/STRIP_LEN)
@@ -77,6 +80,7 @@ PUB Main | p_pixels, pos, ch, pix_count
                 strip.set(ch, strip.colorx(0,0,0,0,0)) 
                 time.pause(100)
             strip.clear
+            current_mode := 0 'reset to original mode
         MODE_COLOR_CHASE1 :  
             color_chase(@Chakras, 6, 100) 
         MODE_COLOR_CHASE2 :  
@@ -131,6 +135,9 @@ pri process_mode_button
             current_mode := 0
         else
             current_mode++
+            
+        hula_count := 0 'reset count
+            
     
 pri process_tilt_sensor
   repeat
@@ -141,10 +148,10 @@ pri process_tilt_sensor
         tilt_detected := 0
         hula_count++
         
-        pst.Home
-        pst.Dec (hula_count)
+        'pst.Home
+        'pst.Dec (hula_count)
         disp.Dec(hula_count)
-        pst.NewLine
+        'pst.NewLine
 
 pri color_wipe(rgb, ms) | ch
 
