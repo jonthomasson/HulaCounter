@@ -26,11 +26,14 @@ CON { hulacounter modes }
   MODE_RAINBOW = 1
   MODE_PIXEL_COUNT1 = 2
   MODE_PIXEL_COUNT2 = 3
-  MODE_COLOR_CHASE = 4
-  MODE_COLOR_WIPE = 5
+  MODE_COLOR_CHASE1 = 4
+  MODE_COLOR_CHASE2 = 5
+  MODE_COLOR_WIPE = 6
+  MODE_PIXEL_OFF = 8
 
 VAR 
   word hula_count
+  word old_hula_count
   word tilt_detected
   long current_mode
   long cog_sensor
@@ -41,12 +44,26 @@ VAR
   long  pixbuf2[STRIP_LEN]
   long  pixbuf3[STRIP_LEN]
   
-PUB Main | p_pixels, pos, ch  
+dat
+
+  Marquee       long    $10_10_10_00
+                long    $00_00_00_00
+                long    $00_00_00_00
+
+  Chakras       long    strip#RED
+                long    strip#ORANGE
+                long    strip#YELLOW 
+                long    strip#GREEN
+                long    strip#BLUE
+                long    strip#INDIGO
+  
+PUB Main | p_pixels, pos, ch, pix_count
 
   setup
 
    
   'beginning of our state machine
+  pix_count := 0
   repeat
     case current_mode
         MODE_DEMO :
@@ -55,7 +72,27 @@ PUB Main | p_pixels, pos, ch
             color_wipe($00_00_20_00, 500/STRIP_LEN) 
         MODE_RAINBOW :
             rainbow(4)
-                                           ' 
+        MODE_PIXEL_OFF :
+            repeat ch from 0 to STRIP_LEN-1
+                strip.set(ch, strip.colorx(0,0,0,0,0)) 
+                time.pause(100)
+            strip.clear
+        MODE_COLOR_CHASE1 :  
+            color_chase(@Chakras, 6, 100) 
+        MODE_COLOR_CHASE2 :  
+            color_chase(@Marquee, 6, 100) 
+        MODE_PIXEL_COUNT1 :
+            if(old_hula_count < hula_count)
+                if(pix_count > STRIP_LEN - 1)
+                    pix_count := 0
+                
+                repeat ch from 0 to STRIP_LEN - 1
+                    if(ch < pix_count + 1)
+                        strip.set(ch, strip.colorx(255,0,0,0,20)) 
+                    else
+                        strip.set(ch, strip.colorx(0,255,0,0,20)) 
+                pix_count++
+                old_hula_count := hula_count                 
   'waitcnt(clkfreq/10 + cnt)
 
 pri setup                                                        
@@ -65,6 +102,7 @@ pri setup
   dira[OUT2]~                'Set Out2 pin to input direction
   
   hula_count := 0      
+  old_hula_count := 0
   tilt_detected := 0         
   current_mode := 0
   disp.Start(LOW_DISPLAY_PIN, 2, 1) '2 digits, common cathode. 
@@ -89,7 +127,7 @@ pri process_mode_button
     'Returns true only if button pressed, held for at least 80ms and released.
     if button.ChkBtnPulse(BTN_MODE, 1, 80)
         'change state
-        if current_mode == 5
+        if current_mode == 8
             current_mode := 0
         else
             current_mode++
@@ -117,9 +155,26 @@ pri color_wipe(rgb, ms) | ch
     strip.set(ch, rgb)
     time.pause(ms)
 
-pub rainbow(ms) | pos, ch
+pri rainbow(ms) | pos, ch
 
   repeat pos from 0 to 255
     repeat ch from 0 to STRIP_LEN-1
         strip.set(ch, strip.wheelx(256 / STRIP_LEN * ch + pos, $20))   
     time.pause(ms)
+
+
+pub color_chase(p_colors, len, ms) | base, idx, ch
+
+'' Performs color chase
+'' -- p_colors is pointer to table of colors
+'' -- len is number of colors in table
+'' -- ms is step duration in chase 
+
+  repeat base from 0 to len-1                                   ' do all colors in table
+    idx := base                                                 ' start at base
+    repeat ch from 0 to strip.num_pixels-1                      ' loop through connected leds
+      strip.setx(ch, long[p_colors][idx], $20)                        ' update channel color 
+      if (++idx == len)                                         ' past end of list?
+        idx := 0                                                ' yes, reset
+   
+    time.pause(ms)                                              ' set movement speed
