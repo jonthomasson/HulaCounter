@@ -136,6 +136,7 @@ pri process_mode_button
             current_mode++
             
         hula_count := 0 'reset count
+        old_hula_count := 0
             
     
 pri process_tilt_sensor
