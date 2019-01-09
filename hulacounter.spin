@@ -9,27 +9,29 @@ OBJ
   disp: "sevensegmentcharlieplex.spin"
   strip : "jm_rgbx_pixel" 'ws2812b driver
   button: "Button"
+  rr: "RealRandom"
   
 CON { io pins }
   OUT1   = 0                 { out1 pin of tilt sensor }
   OUT2   = 1                 { out2 pin of tilt sensor }
   LOW_DISPLAY_PIN = 2
-  BTN_MODE = 25
+  BTN_MODE = 16
   LEDS = 15                                                     ' LED signal pin
   
 CON
-  STRIP_LEN = 8                                                
+  STRIP_LEN =25                                              
   PIX_BITS  = 24                                                ' 24-bit (RGB) pixels
 
 CON { hulacounter modes }
-  MODE_DEMO = 0
+  MODE_WIPE = 0
   MODE_RAINBOW = 1
   MODE_PIXEL_COUNT1 = 2
-  MODE_PIXEL_COUNT2 = 3
-  MODE_COLOR_CHASE1 = 4
-  MODE_COLOR_CHASE2 = 5
-  MODE_COLOR_WIPE = 6
-  MODE_PIXEL_OFF = 8
+  'MODE_PIXEL_COUNT2 = 3
+  MODE_COLOR_CHASE1 = 3
+  MODE_COLOR_CHASE2 = 4
+  MODE_FIREWORKS = 5
+  'MODE_COLOR_WIPE = 6
+  MODE_PIXEL_OFF = 6
 
 VAR 
   word hula_count
@@ -56,10 +58,31 @@ dat
                 long    strip#GREEN
                 long    strip#BLUE
                 long    strip#INDIGO
+                
+  Colors        long    strip#RED
+                long    strip#GREEN
+                long    strip#BLUE
+                long    strip#WHITE
+                long    strip#CYAN
+                long    strip#MAGENTA
+                long    strip#YELLOW
+                long    strip#CHARTREUSE
+                long    strip#ORANGE
+                long    strip#AQUAMARINE
+                long    strip#PINK
+                long    strip#TURQUOISE
+                long    strip#INDIGO
+                long    strip#VIOLET    
+                long    strip#MAROON
+                long    strip#CRIMSON
+                long    strip#PURPLE
+
   
-PUB Main | p_pixels, pos, ch, pix_count
+PUB Main | p_pixels, pos, ch, pix_count, idx
 
   setup
+  
+  idx := 0
 
    
   'beginning of our state machine
@@ -69,12 +92,17 @@ PUB Main | p_pixels, pos, ch, pix_count
         disp.Dec(current_mode)
         
     case current_mode
-        MODE_DEMO :
-            color_wipe($20_00_00_00, 500/STRIP_LEN)
-            color_wipe($00_20_00_00, 500/STRIP_LEN)      
-            color_wipe($00_00_20_00, 500/STRIP_LEN) 
+        MODE_WIPE :
+            color_wipe2(@Colors[idx] , 400/STRIP_LEN)
+            if (++idx == 17)    ' past end of list?
+                idx := 0  
+            'color_wipe($20_00_00_00, 500/STRIP_LEN)
+            'color_wipe($00_20_00_00, 500/STRIP_LEN)      
+            'color_wipe($00_00_20_00, 500/STRIP_LEN) 
         MODE_RAINBOW :
             rainbow(4)
+        MODE_FIREWORKS :
+            fireworks(2)
         MODE_PIXEL_OFF :
             repeat ch from 0 to STRIP_LEN-1
                 strip.set(ch, strip.colorx(0,0,0,0,0)) 
@@ -130,7 +158,7 @@ pri process_mode_button
     'Returns true only if button pressed, held for at least 80ms and released.
     if button.ChkBtnPulse(BTN_MODE, 1, 80)
         'change state
-        if current_mode == 8
+        if current_mode == 6
             current_mode := 0
         else
             current_mode++
@@ -162,6 +190,15 @@ pri color_wipe(rgb, ms) | ch
     strip.set(ch, rgb)
     time.pause(ms)
 
+pri color_wipe2(p_color, ms) | ch
+
+'' Sequentially fills strip with color rgb
+'' -- ms is delay between pixels, in milliseconds
+
+  repeat ch from 0 to strip.num_pixels-1 
+    strip.setx(ch, long [p_color], $20)
+    time.pause(ms)
+
 pri rainbow(ms) | pos, ch
 
   repeat pos from 0 to 255
@@ -169,6 +206,39 @@ pri rainbow(ms) | pos, ch
         strip.set(ch, strip.wheelx(256 / STRIP_LEN * ch + pos, $20))   
     time.pause(ms)
 
+''trying to mimic fireworks both in spontaneity and color
+pri fireworks(ms) | ch, color, size, base, rand, idx
+    'pick a random led to start point of ignition
+    'start RealRandom
+    strip.clear
+    rand := 0
+    rr.start 
+    ch := (rr.random >> 1)//(STRIP_LEN) 'shifting bits over one to ensure non signed
+                                           'generate a random number between 0 and STRIP_LEN
+    
+    'pick a random color
+    color := (rr.random >> 1)//(255) '255 total colors to choose from
+    
+    'pick a random burst size
+    'j := (rand.random >> 1) // (RANGE - i + 1) + i
+    size := (rr.random >> 1)// (10 - 4 + 1) + 4 'give me a random number between 4 and 10
+    rr.stop
+    
+    'start from area of impact, send leds in opposite direction with gradually decreasing
+    'momentum
+    idx := 0
+    repeat base from ch to ch + size-1
+        if(base > STRIP_LEN-1)
+            strip.set(base - STRIP_LEN, strip.wheelx(color, $100)) 
+        else
+            strip.set(base, strip.wheelx(color, $100)) 
+            
+        if(ch - idx < 0)
+            strip.set((ch - idx) + STRIP_LEN, strip.wheelx(color, $100)) 
+        else
+            strip.set(ch - idx, strip.wheelx(color, $100)) 
+        time.pause(ms + (50*idx))
+        idx++
 
 pub color_chase(p_colors, len, ms) | base, idx, ch
 
