@@ -29,9 +29,10 @@ CON { hulacounter modes }
   'MODE_PIXEL_COUNT2 = 3
   MODE_COLOR_CHASE1 = 3
   MODE_COLOR_CHASE2 = 4
-  MODE_FIREWORKS = 5
+  MODE_COLOR_CHASE3 = 5
+  MODE_FIREWORKS = 6
   'MODE_COLOR_WIPE = 6
-  MODE_PIXEL_OFF = 6
+  MODE_PIXEL_OFF = 7
 
 VAR 
   word hula_count
@@ -47,6 +48,10 @@ VAR
   long  pixbuf3[STRIP_LEN]
   
 dat
+
+  Counter_Color long    $FF_00_00_00    
+                long    $00_00_FF_00
+                long    $00_FF_00_00 
 
   Marquee       long    $10_10_10_00
                 long    $00_00_00_00
@@ -112,18 +117,38 @@ PUB Main | p_pixels, pos, ch, pix_count, idx
             color_chase(@Chakras, 6, 100) 
         MODE_COLOR_CHASE2 :  
             color_chase(@Marquee, 6, 100) 
+        MODE_COLOR_CHASE3 :  
+            color_chase(@Colors, 17, 100) 
         MODE_PIXEL_COUNT1 :
             if(old_hula_count < hula_count)
+                if(idx > 2)
+                    idx := 0
                 if(pix_count > STRIP_LEN - 1)
                     pix_count := 0
-                
-                repeat ch from 0 to STRIP_LEN - 1
-                    if(ch < pix_count + 1)
-                        strip.set(ch, strip.colorx(255,0,0,0,20)) 
+                    if (idx == 2)    
+                        idx := 0  
                     else
-                        strip.set(ch, strip.colorx(0,255,0,0,20)) 
+                        ++idx
+               
+                'pst.Dec (idx)    
+                repeat ch from 0 to STRIP_LEN - 1
+                    if((ch < pix_count + 1) and idx == 0)
+                        'pst.Str (string("red"))
+                        strip.set(ch, $20_00_00_00) 
+                    elseif((ch < pix_count + 1) and idx == 1)
+                        'pst.Str (string("green"))
+                        strip.set(ch, $00_20_00_00)
+                    elseif((ch < pix_count + 1) and idx == 2)
+                        'pst.Str (string("blue"))
+                        strip.set(ch, $00_00_20_00)
+                    'else
+                    '    strip.setx(ch, strip.colorx(0,255,0,0,20)) 
                 pix_count++
-                old_hula_count := hula_count                 
+                old_hula_count := hula_count    
+            elseif(hula_count == 0)
+                repeat ch from 0 to STRIP_LEN-1
+                    strip.set(ch, $00_00_FF_00) 
+                             
   'waitcnt(clkfreq/10 + cnt)
 
 pri setup                                                        
@@ -158,13 +183,15 @@ pri process_mode_button
     'Returns true only if button pressed, held for at least 80ms and released.
     if button.ChkBtnPulse(BTN_MODE, 1, 80)
         'change state
-        if current_mode == 6
+        if current_mode == 7
             current_mode := 0
         else
             current_mode++
             
         hula_count := 0 'reset count
         old_hula_count := 0
+        
+        disp.Dec(current_mode)
             
     
 pri process_tilt_sensor
@@ -196,7 +223,7 @@ pri color_wipe2(p_color, ms) | ch
 '' -- ms is delay between pixels, in milliseconds
 
   repeat ch from 0 to strip.num_pixels-1 
-    strip.setx(ch, long [p_color], $20)
+    strip.setx(ch, long [p_color], $60)
     time.pause(ms)
 
 pri rainbow(ms) | pos, ch
@@ -207,7 +234,7 @@ pri rainbow(ms) | pos, ch
     time.pause(ms)
 
 ''trying to mimic fireworks both in spontaneity and color
-pri fireworks(ms) | ch, color, size, base, rand, idx
+pri fireworks(ms) | ch, color, size, base, rand, idx, brightness
     'pick a random led to start point of ignition
     'start RealRandom
     strip.clear
@@ -220,24 +247,26 @@ pri fireworks(ms) | ch, color, size, base, rand, idx
     color := (rr.random >> 1)//(255) '255 total colors to choose from
     
     'pick a random burst size
-    'j := (rand.random >> 1) // (RANGE - i + 1) + i
-    size := (rr.random >> 1)// (10 - 4 + 1) + 4 'give me a random number between 4 and 10
+    size := (rr.random >> 1)// (12 - 4 + 1) + 4 'give me a random number between 4 and 12
     rr.stop
     
     'start from area of impact, send leds in opposite direction with gradually decreasing
     'momentum
     idx := 0
+    brightness := 0
     repeat base from ch to ch + size-1
-        if(base > STRIP_LEN-1)
-            strip.set(base - STRIP_LEN, strip.wheelx(color, $100)) 
+        brightness := $255 - (21*idx) 'we want firework to be brightest at point of ignition
+                                      'and slowly fizzle out just like real fireworks
+        if(base > STRIP_LEN-1) 'if at end of strip, go back to beginning
+            strip.set(base - STRIP_LEN, strip.wheelx(color, brightness)) 
         else
-            strip.set(base, strip.wheelx(color, $100)) 
+            strip.set(base, strip.wheelx(color, brightness)) 
             
-        if(ch - idx < 0)
-            strip.set((ch - idx) + STRIP_LEN, strip.wheelx(color, $100)) 
+        if(ch - idx < 0) 'if at beginning of strip, continue at end
+            strip.set((ch - idx) + STRIP_LEN, strip.wheelx(color, brightness)) 
         else
-            strip.set(ch - idx, strip.wheelx(color, $100)) 
-        time.pause(ms + (50*idx))
+            strip.set(ch - idx, strip.wheelx(color, brightness)) 
+        time.pause(ms + (50*idx)) 'add an increasing delay just like real fireworks
         idx++
 
 pub color_chase(p_colors, len, ms) | base, idx, ch
