@@ -111,7 +111,7 @@ PUB Main | p_pixels, pos, ch, pix_count, idx
         MODE_FIREWORKS :
             fireworks(2)
         MODE_STARS :
-            starry_night(50)
+            starry_night(20)
         MODE_PIXEL_OFF :
             repeat ch from 0 to STRIP_LEN-1
                 strip.set(ch, strip.colorx(0,0,0,0,0)) 
@@ -187,7 +187,7 @@ pri process_mode_button
     'Returns true only if button pressed, held for at least 80ms and released.
     if button.ChkBtnPulse(BTN_MODE, 1, 80)
         'change state
-        if current_mode == 7
+        if current_mode == 8
             current_mode := 0
         else
             current_mode++
@@ -233,28 +233,38 @@ pri color_wipe2(p_color, ms) | ch
 pri starry_night(ms) | num, idx, ch, rand, twinkle
     'we want to choose some random leds for stars and then 
     'randomly twinkle them by varying their brightness
-    
+    strip.clear
     'choose random number of stars
     rr.start
     
-    num := (rr.random >> 1)// (12 - 7 + 1) + 7 'give me a random number between 7 and 12
+    num := (rr.random >> 1)// (16 - 7 + 1) + 7 'give me a random number between 7 and 16
     rr.stop  
     
     'set initial stars                                      
     repeat idx from 0 to num-1
+        rr.start
         ch := (rr.random >> 1)//(STRIP_LEN)    
-        strip.set(ch, $FF_FF_FF_00) 
+        strip.setx(ch, $FF_FF_FF_00, $10) 
         stars[idx] := ch    
-        
+        rr.stop
+        time.pause(ms) 
+    time.pause(100)
+    'time.pause(5000)
      'twinkle stars
-     repeat idx from 0 to num-1
+     repeat idx from 0 to 30
+        rr.start
         rand := (rr.random >> 1)//(num)
-        twinkle := (rr.random >> 1)//(1)   
+        rr.stop
+        rr.start
+        twinkle := (rr.random >> 1)//(2)  
+        rr.stop
+        pst.Dec (stars[rand]) 
         if(twinkle == 0)
             strip.setx(stars[rand], $FF_FF_FF_00, $10)
         elseif(twinkle == 1)
             strip.setx(stars[rand], $FF_FF_FF_00, $255)
-        time.pause(ms)                                     
+        time.pause(ms)
+      time.pause(100)                                     
     
 pri rainbow(ms) | pos, ch
 
@@ -272,10 +282,12 @@ pri fireworks(ms) | ch, color, size, base, rand, idx, brightness
     rr.start 
     ch := (rr.random >> 1)//(STRIP_LEN) 'shifting bits over one to ensure non signed
                                            'generate a random number between 0 and STRIP_LEN
-    
+    rr.stop
+    rr.start
     'pick a random color
     color := (rr.random >> 1)//(255) '255 total colors to choose from
-    
+    rr.stop
+    rr.start
     'pick a random burst size
     size := (rr.random >> 1)// (12 - 4 + 1) + 4 'give me a random number between 4 and 12
     rr.stop
