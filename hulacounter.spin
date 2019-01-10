@@ -24,15 +24,13 @@ CON
 
 CON { hulacounter modes }
   MODE_WIPE = 0
-  MODE_RAINBOW = 1
-  MODE_PIXEL_COUNT1 = 2
-  'MODE_PIXEL_COUNT2 = 3
-  MODE_COLOR_CHASE1 = 3
-  MODE_COLOR_CHASE2 = 4
-  MODE_COLOR_CHASE3 = 5
-  MODE_FIREWORKS = 6
-  MODE_STARS = 7
-  'MODE_COLOR_WIPE = 6
+  MODE_PIXEL_COUNT1 = 1
+  MODE_COLOR_CHASE1 = 2
+  MODE_COLOR_CHASE2 = 3
+  MODE_COLOR_CHASE3 = 4
+  MODE_FIREWORKS = 5
+  MODE_STARS = 6
+  MODE_RAINBOW = 7
   MODE_PIXEL_OFF = 8
 
 VAR 
@@ -227,7 +225,7 @@ pri color_wipe2(p_color, ms) | ch
 '' -- ms is delay between pixels, in milliseconds
 
   repeat ch from 0 to strip.num_pixels-1 
-    strip.setx(ch, long [p_color], $60)
+    strip.setx(ch, long [p_color], $40)
     time.pause(ms)
     
 pri starry_night(ms) | num, idx, ch, rand, twinkle
@@ -240,7 +238,7 @@ pri starry_night(ms) | num, idx, ch, rand, twinkle
     num := (rr.random >> 1)// (16 - 7 + 1) + 7 'give me a random number between 7 and 16
     rr.stop  
     
-    'set initial stars                                      
+    'set initial constellation                                      
     repeat idx from 0 to num-1
         rr.start
         ch := (rr.random >> 1)//(STRIP_LEN)    
@@ -258,7 +256,7 @@ pri starry_night(ms) | num, idx, ch, rand, twinkle
         rr.start
         twinkle := (rr.random >> 1)//(2)  
         rr.stop
-        pst.Dec (stars[rand]) 
+        'pst.Dec (stars[rand]) 
         if(twinkle == 0)
             strip.setx(stars[rand], $FF_FF_FF_00, $10)
         elseif(twinkle == 1)
@@ -270,7 +268,7 @@ pri rainbow(ms) | pos, ch
 
   repeat pos from 0 to 255
     repeat ch from 0 to STRIP_LEN-1
-        strip.set(ch, strip.wheelx(256 / STRIP_LEN * ch + pos, $20))   
+        strip.set(ch, strip.wheelx(256 / STRIP_LEN * ch + pos, $60))   
     time.pause(ms)
 
 ''trying to mimic fireworks both in spontaneity and color
@@ -321,7 +319,7 @@ pub color_chase(p_colors, len, ms) | base, idx, ch
   repeat base from 0 to len-1                                   ' do all colors in table
     idx := base                                                 ' start at base
     repeat ch from 0 to strip.num_pixels-1                      ' loop through connected leds
-      strip.setx(ch, long[p_colors][idx], $20)                        ' update channel color 
+      strip.setx(ch, long[p_colors][idx], $60)                        ' update channel color 
       if (++idx == len)                                         ' past end of list?
         idx := 0                                                ' yes, reset
    
