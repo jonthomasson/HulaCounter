@@ -31,8 +31,9 @@ CON { hulacounter modes }
   MODE_COLOR_CHASE2 = 4
   MODE_COLOR_CHASE3 = 5
   MODE_FIREWORKS = 6
+  MODE_STARS = 7
   'MODE_COLOR_WIPE = 6
-  MODE_PIXEL_OFF = 7
+  MODE_PIXEL_OFF = 8
 
 VAR 
   word hula_count
@@ -46,6 +47,7 @@ VAR
   long  pixbuf1[STRIP_LEN]                                      ' pixel buffers
   long  pixbuf2[STRIP_LEN]
   long  pixbuf3[STRIP_LEN]
+  long  stars[STRIP_LEN]
   
 dat
 
@@ -108,6 +110,8 @@ PUB Main | p_pixels, pos, ch, pix_count, idx
             rainbow(4)
         MODE_FIREWORKS :
             fireworks(2)
+        MODE_STARS :
+            starry_night(50)
         MODE_PIXEL_OFF :
             repeat ch from 0 to STRIP_LEN-1
                 strip.set(ch, strip.colorx(0,0,0,0,0)) 
@@ -225,7 +229,33 @@ pri color_wipe2(p_color, ms) | ch
   repeat ch from 0 to strip.num_pixels-1 
     strip.setx(ch, long [p_color], $60)
     time.pause(ms)
-
+    
+pri starry_night(ms) | num, idx, ch, rand, twinkle
+    'we want to choose some random leds for stars and then 
+    'randomly twinkle them by varying their brightness
+    
+    'choose random number of stars
+    rr.start
+    
+    num := (rr.random >> 1)// (12 - 7 + 1) + 7 'give me a random number between 7 and 12
+    rr.stop  
+    
+    'set initial stars                                      
+    repeat idx from 0 to num-1
+        ch := (rr.random >> 1)//(STRIP_LEN)    
+        strip.set(ch, $FF_FF_FF_00) 
+        stars[idx] := ch    
+        
+     'twinkle stars
+     repeat idx from 0 to num-1
+        rand := (rr.random >> 1)//(num)
+        twinkle := (rr.random >> 1)//(1)   
+        if(twinkle == 0)
+            strip.setx(stars[rand], $FF_FF_FF_00, $10)
+        elseif(twinkle == 1)
+            strip.setx(stars[rand], $FF_FF_FF_00, $255)
+        time.pause(ms)                                     
+    
 pri rainbow(ms) | pos, ch
 
   repeat pos from 0 to 255
